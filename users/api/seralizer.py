@@ -11,13 +11,16 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 class RegistrationSerializer(serializers.ModelSerializer):
     repeated_password = serializers.CharField(write_only=True)
-
+    fullname = serializers.CharField(write_only=True)
     class Meta:
         model = User
         fields = ['fullname', 'email', 'password', 'repeated_password']
         extra_kwargs = {'password': {'write_only': True}}
 
-    # Email validieren
+
+
+
+        # Email validieren
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError('Email already exists')
@@ -31,10 +34,12 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
     # User erstellen
     def create(self, validated_data):
+        fullname = validated_data.pop('fullname')
         user = User(
-            fullname=validated_data['fullname'],
+            username=validated_data['email'],
             email=validated_data['email']
         )
         user.set_password(validated_data['password'])
         user.save()
+        UserProfile.objects.create(user=user, fullname=fullname)
         return user

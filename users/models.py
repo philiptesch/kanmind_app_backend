@@ -3,9 +3,9 @@ from django.contrib.auth.models import User
 from django.db import models
 
 class UserProfile(models.Model):
-    fullname = models.OneToOneField(User, on_delete=models.CASCADE)
-    email = models.EmailField(max_length=254, unique=True)
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    fullname = models.CharField(max_length=100)
 
 
     def __str__(self):
-        return self.user.username
+        return self.fullname
