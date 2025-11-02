@@ -3,7 +3,10 @@ from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
 from users.models import UserProfile
 from rest_framework import generics, status
-from users.api.seralizer import RegistrationSerializer
+from users.api.seralizer import RegistrationSerializer, CustomLoginSerializer
+from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.permissions import AllowAny
+from django.contrib.auth.models import User
 
 
 
@@ -15,12 +18,35 @@ class RegisterrationView(generics.CreateAPIView):
 
         serializer.is_valid(raise_exception=True)
         saved_account = serializer.save()
+        fullname = f"{saved_account.first_name} {saved_account.last_name}".strip()
         token, created = Token.objects.get_or_create(user=saved_account)
-        profile = UserProfile.objects.get(user=saved_account)
+        
         return Response({
             "message": "User registered successfully",
-            'fullname': profile.fullname,
+            'fullname': fullname,
             'email': saved_account.email,
-            'password': saved_account.password,
             'token': token.key,
+            'user_id': saved_account.id
+        })
+    
+
+
+class CustomLogin(ObtainAuthToken):
+    serializer_class = CustomLoginSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = serializer.validated_data['user']
+        token, created = Token.objects.get_or_create(user=user)
+        profile = UserProfile.objects.get(user=user)
+
+        return Response({
+            "message": "Login successful",
+            "fullname": profile.fullname,
+            "email": user.email,
+            "token": token.key,
+            "user_id": profile.id
         })

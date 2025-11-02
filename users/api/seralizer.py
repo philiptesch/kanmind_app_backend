@@ -1,23 +1,37 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from users.models import UserProfile
+from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.permissions import AllowAny
+from rest_framework.authtoken.models import Token
+from rest_framework.response import Response
 
 
-class UserProfileSerializer(serializers.ModelSerializer):
+
+class UserProfileSerializer(serializers.ModelSerializer):   
+    id = serializers.IntegerField(read_only=True)
+    fullname = serializers.CharField()
+    
+    def get_fullname(self, obj):
+        return f"{obj.first_name} {obj.last_name}".strip()
+
     class Meta:
-        model = UserProfile
-        fields = ['user', 'bio', 'location']
+        model = User
+        fields = ['id', 'fullname', 'email']
+
+
+
+        
 
 
 class RegistrationSerializer(serializers.ModelSerializer):
     repeated_password = serializers.CharField(write_only=True)
-    fullname = serializers.CharField(write_only=True)
+    fullname = serializers.CharField()
+    user_id = serializers.IntegerField(read_only=True,)
     class Meta:
         model = User
-        fields = ['fullname', 'email', 'password', 'repeated_password']
+        fields = ['fullname', 'email', 'password', 'repeated_password', 'user_id']
         extra_kwargs = {'password': {'write_only': True}}
-
-
 
 
         # Email validieren
@@ -35,11 +49,32 @@ class RegistrationSerializer(serializers.ModelSerializer):
     # User erstellen
     def create(self, validated_data):
         fullname = validated_data.pop('fullname')
+        name_parts = fullname.strip().split(" ", 1)
+        first_name = name_parts[0]
+
+        last_name = name_parts[1] if len(name_parts) > 1 else ""
         user = User(
             username=validated_data['email'],
-            email=validated_data['email']
+            email=validated_data['email'],
+            first_name=first_name,
+            last_name=last_name
         )
         user.set_password(validated_data['password'])
         user.save()
-        UserProfile.objects.create(user=user, fullname=fullname)
         return user
+
+class CustomLoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        email = data.get('email')
+        password = data.get('password')
+
+        # Benutzer nach Email suchen
+        user = User.objects.filter(email=email).first()
+        if user is None:
+            raise serializers.ValidationError("Invalid credentials")
+
+        data['user'] = user
+        return data

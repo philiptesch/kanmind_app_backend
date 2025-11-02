@@ -1,11 +1,11 @@
 from rest_framework import serializers
 from kanmind_board_app.models import Board,Task,Comment
 from users.models import User
-
+from users.api.seralizer import UserProfileSerializer
 
 class BoardSerializer(serializers.ModelSerializer):
 
-    owner_id = serializers.PrimaryKeyRelatedField(queryset= User.objects.all(), source='boards_owner', write_only =True)
+    owner_id = serializers.IntegerField(read_only=True)
     members = serializers.PrimaryKeyRelatedField(queryset= User.objects.all(), write_only=True, many=True)
     member_count = serializers.SerializerMethodField()
     ticket_count = serializers.SerializerMethodField()
@@ -17,7 +17,8 @@ class BoardSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'members', 'member_count', 'ticket_count', 'tasks_to_do_count', 'tasks_high_prio_count', 'owner_id']
 
 
-    def get_market_count(self, obj):
+
+    def get_member_count(self, obj):
         return obj.members.count()
     
 
@@ -26,4 +27,17 @@ class BoardSerializer(serializers.ModelSerializer):
 
     def get_tasks_high_prio_count(self, obj):
         return obj.tasks.filter(priority='HIGH').count()
+    
+    def get_ticket_count(self, obj):
+        return obj.tasks.count()
 
+
+
+class BoardDetailSerializer(serializers.ModelSerializer):
+
+    owner_id = serializers.IntegerField(read_only=True)
+    members = UserProfileSerializer(read_only=True, many=True)
+
+    class Meta:
+        model = Board
+        fields = ['id', 'title', 'owner_id', 'members']
