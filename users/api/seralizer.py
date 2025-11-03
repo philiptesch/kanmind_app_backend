@@ -10,7 +10,7 @@ from rest_framework.response import Response
 
 class UserProfileSerializer(serializers.ModelSerializer):   
     id = serializers.IntegerField(read_only=True)
-    fullname = serializers.CharField()
+    fullname = serializers.SerializerMethodField()
     
     def get_fullname(self, obj):
         return f"{obj.first_name} {obj.last_name}".strip()
