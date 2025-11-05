@@ -31,13 +31,51 @@ class BoardSerializer(serializers.ModelSerializer):
     def get_ticket_count(self, obj):
         return obj.tasks.count()
 
+class TaskSerializer(serializers.ModelSerializer):
+    assignee_id= serializers.IntegerField(write_only=True)
+    reviewer_id= serializers.IntegerField(write_only=True)
+    assignee = UserProfileSerializer(read_only=True)
+    reviewer = UserProfileSerializer(read_only=True)    
 
+    class Meta:
+        model = Task
+        fields = ['board', 'title', 'description', 'status', 'priority', 'assignee_id', 'reviewer_id', 'due_date', 'assignee', 'reviewer' ]
+
+
+    def create(self, validated_data):
+        assignee_id = validated_data.pop('assignee_id')
+        reviewer_id = validated_data.pop('reviewer_id')
+        
+        assignee = User.objects.get(id=assignee_id)
+        reviewer = User.objects.get(id=reviewer_id)
+        task = Task.objects.create(
+            **validated_data,
+            assignee=assignee,
+            reviewer=reviewer
+            )   
+        return task
 
 class BoardDetailSerializer(serializers.ModelSerializer):
 
     owner_id = serializers.IntegerField(read_only=True)
     members = UserProfileSerializer(read_only=True, many=True)
-
+    tasks = TaskSerializer(read_only=True, many=True)
     class Meta:
         model = Board
-        fields = ['id', 'title', 'owner_id', 'members']
+        fields = ['id', 'title', 'owner_id', 'members', 'tasks']
+
+
+
+      
+class TaskAssignSerializer(serializers.ModelSerializer):
+    assignee = UserProfileSerializer(read_only=True)
+    reviewer = UserProfileSerializer(read_only=True)    
+    comments_count = serializers.SerializerMethodField()
+
+
+
+    def get_comments_count(self, obj):
+        return obj.comments.count()
+    class Meta:
+        model = Task
+        fields = ['id', 'board', 'title', 'description', 'status', 'priority',  'due_date', 'assignee', 'reviewer', 'due_date', 'comments_count']
