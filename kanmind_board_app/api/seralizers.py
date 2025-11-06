@@ -79,3 +79,40 @@ class TaskAssignSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
         fields = ['id', 'board', 'title', 'description', 'status', 'priority',  'due_date', 'assignee', 'reviewer', 'due_date', 'comments_count']
+
+
+class TaskDetailSerializer(serializers.ModelSerializer):
+    assignee_id= serializers.IntegerField(write_only=True)
+    reviewer_id= serializers.IntegerField(write_only=True)
+    assignee = UserProfileSerializer(read_only=True)
+    reviewer = UserProfileSerializer(read_only=True)    
+    
+    
+    class Meta:
+        model = Task
+        fields = ['id','title', 'description', 'status', 'priority', 'assignee_id', 'reviewer_id', 'due_date', 'assignee', 'reviewer' ]
+
+
+    def update(self, instance, validated_data):
+        assignee_id = validated_data.pop('assignee_id', None)
+        reviewer_id = validated_data.pop('reviewer_id', None)
+
+        if assignee_id is not None:
+            assignee = User.objects.get(id=assignee_id)
+            instance.assignee = assignee
+
+        if reviewer_id is not None:
+            reviewer = User.objects.get(id=reviewer_id)
+            instance.reviewer = reviewer
+        
+        instance.title = validated_data.get('title', instance.title)
+        instance.description = validated_data.get('description', instance.description)
+        instance.status = validated_data.get('status', instance.status)
+        instance.priority = validated_data.get('priority', instance.priority)
+        instance.due_date = validated_data.get('due_date', instance.due_date)
+
+        #for attr, value in validated_data.items():
+        #    setattr(instance, attr, value)
+
+        instance.save()
+        return instance

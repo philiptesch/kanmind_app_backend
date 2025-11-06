@@ -1,4 +1,4 @@
-from .seralizers import BoardSerializer, BoardDetailSerializer, TaskSerializer, TaskAssignSerializer
+from .seralizers import BoardSerializer, BoardDetailSerializer, TaskSerializer, TaskAssignSerializer, TaskDetailSerializer
 from kanmind_board_app.models import Board, Task, Comment
 from rest_framework.views import APIView
 from rest_framework import mixins
@@ -134,9 +134,12 @@ class TaskCreateView(APIView):
 
     def post(self, request, ):
         seralizer = TaskSerializer(data=request.data)
+
+        if request.user not in Board.objects.get(id=request.data.get('board')).members.all() and request.user != Board.objects.get(id=request.data.get('board')).owner:
+            return Response({'message': 'Forbidden. The user must either be a member of the board or the owner of the board.'}, status=status.HTTP_403_FORBIDDEN)
+        
         if seralizer.is_valid():
             task = seralizer.save()
-
             return Response(seralizer.data, status=status.HTTP_201_CREATED)
 
         return Response(seralizer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -167,3 +170,27 @@ class TaskReviewView(generics.ListCreateAPIView):
             return Response({'message': 'No tasks to review.'}, status=status.HTTP_401_UNAUTHORIZED)
 
         return Response(serializer.data)
+    
+
+class TaskDetailView(APIView):
+    permission_classes = [IsAuthenticated, isMember]
+
+    def patch(self, request, pk, *args, **kwargs):
+        board = Board.objects.filter(members=request.user) | Board.objects.filter(owner=request.user)
+        task = get_object_or_404(Task, pk=pk)
+
+        if not board:
+            return Response({'Forbidden. The user must be a member of the board to which the task belongs.'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+
+        if request.user != task.board.owner and request.user not in task.board.members.all():
+            return Response({'Forbidden. The user must be a member of the board to which the task belongs.'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        serializer = TaskDetailSerializer(task, data=request.data, partial=True)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=200)
+
+        return Response(serializer.errors, status=400)
+    
