@@ -180,11 +180,11 @@ class TaskDetailView(APIView):
         task = get_object_or_404(Task, pk=pk)
 
         if not board:
-            return Response({'Forbidden. The user must be a member of the board to which the task belongs.'}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({'Not authorized. The user must be logged in.'}, status=status.HTTP_401_UNAUTHORIZED)
         
 
         if request.user != task.board.owner and request.user not in task.board.members.all():
-            return Response({'Forbidden. The user must be a member of the board to which the task belongs.'}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({'Forbidden. The user must be a member of the board to which the task belongs.'}, status=status.HTTP_403_FORBIDDEN)
         
         serializer = TaskDetailSerializer(task, data=request.data, partial=True)
 
@@ -194,3 +194,18 @@ class TaskDetailView(APIView):
 
         return Response(serializer.errors, status=400)
     
+    def delete(self, request, pk, *args, **kwargs):
+
+        board = Board.objects.filter(members=request.user) | Board.objects.filter(owner=request.user)
+        task = get_object_or_404(Task, pk=pk)
+
+        if not board:
+            return Response({'Not authorized. The user must be logged in.'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+
+        if request.user != task.board.owner and request.user not in task.board.members.all():
+            return Response({'Forbidden. The user must be a member of the board to which the task belongs.'}, status=status.HTTP_403_FORBIDDEN) 
+        
+
+        task.delete()
+        return Response({'The task was successfully deleted'}, status=status.HTTP_204_NO_CONTENT)
