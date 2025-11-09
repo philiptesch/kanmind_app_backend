@@ -1,4 +1,4 @@
-from .seralizers import BoardSerializer, BoardDetailSerializer, TaskSerializer, TaskAssignSerializer, TaskDetailSerializer
+from .seralizers import BoardSerializer, BoardDetailSerializer, TaskSerializer, TaskAssignSerializer, TaskDetailSerializer, CommentSerializer
 from kanmind_board_app.models import Board, Task, Comment
 from rest_framework.views import APIView
 from rest_framework import mixins
@@ -176,16 +176,21 @@ class TaskDetailView(APIView):
     permission_classes = [IsAuthenticated, isMember]
 
     def patch(self, request, pk, *args, **kwargs):
-        board = Board.objects.filter(members=request.user) | Board.objects.filter(owner=request.user)
         task = get_object_or_404(Task, pk=pk)
+        board = task.board  
 
-        if not board:
-            return Response({'Not authorized. The user must be logged in.'}, status=status.HTTP_401_UNAUTHORIZED)
-        
+        if not request.user.is_authenticated:
+            return Response(
+                {'detail': 'Authentication credentials were not provided.'},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
 
-        if request.user != task.board.owner and request.user not in task.board.members.all():
-            return Response({'Forbidden. The user must be a member of the board to which the task belongs.'}, status=status.HTTP_403_FORBIDDEN)
-        
+        if request.user != board.owner and request.user not in board.members.all():
+             return Response(
+            {'detail': 'You are not allowed to modify this task.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
         serializer = TaskDetailSerializer(task, data=request.data, partial=True)
 
         if serializer.is_valid():
@@ -193,19 +198,91 @@ class TaskDetailView(APIView):
             return Response(serializer.data, status=200)
 
         return Response(serializer.errors, status=400)
+
     
     def delete(self, request, pk, *args, **kwargs):
-
-        board = Board.objects.filter(members=request.user) | Board.objects.filter(owner=request.user)
         task = get_object_or_404(Task, pk=pk)
+        board = task.board
 
-        if not board:
-            return Response({'Not authorized. The user must be logged in.'}, status=status.HTTP_401_UNAUTHORIZED)
+        if not request.user.is_authenticated:
+            return Response(
+            {'detail': 'Authentication credentials were not provided.'},
+            status=status.HTTP_401_UNAUTHORIZED )
         
-
-        if request.user != task.board.owner and request.user not in task.board.members.all():
-            return Response({'Forbidden. The user must be a member of the board to which the task belongs.'}, status=status.HTTP_403_FORBIDDEN) 
-        
+        if request.user != board.owner and request.user not in board.members.all():
+            return Response(
+            {'detail': 'You are not allowed to delete this task.'},
+            status=status.HTTP_403_FORBIDDEN)
 
         task.delete()
-        return Response({'The task was successfully deleted'}, status=status.HTTP_204_NO_CONTENT)
+        return Response(
+        {'detail': 'The task was successfully deleted.'},
+        status=status.HTTP_204_NO_CONTENT)
+
+
+class CommentView(APIView):
+    permission_classes = [IsAuthenticated, isMember]
+    def post(self, request, pk, *args, **kwargs):
+        task = get_object_or_404(Task, pk=pk)
+        board = task.board
+
+        if not request.user.is_authenticated:
+            return Response(
+            {'detail': 'Authentication credentials were not provided.'},
+            status=status.HTTP_401_UNAUTHORIZED )
+        
+        if request.user != board.owner and request.user not in board.members.all():
+            return Response(
+            {'detail': 'You are not allowed to comment on this task.'},
+            status=status.HTTP_403_FORBIDDEN)
+
+        serializer = CommentSerializer(data=request.data)
+
+        if serializer.is_valid():
+            serializer.save(author=request.user, task=task)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def get(self, request, pk, *args, **kwargs):
+        user = request.user
+        task = get_object_or_404(Task, pk=pk)
+        board = task.board
+
+        if not user.is_authenticated:
+            return Response(
+            {'detail': 'Authentication credentials were not provided.'},
+            status=status.HTTP_401_UNAUTHORIZED )
+        
+        if request.user != board.owner and user not in board.members.all():
+            return Response(
+            {'detail': 'You are not allowed to comment on this task.'},
+            status=status.HTTP_403_FORBIDDEN)
+        comments = Comment.objects.filter(task=task)
+        serializer = CommentSerializer(comments, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+class CommentDeleteView(APIView):
+    permission_classes = [IsAuthenticated, isMember]
+
+    def delete(self, request,task_id,  comment_id, *args, **kwargs):
+        user = request.user
+        comment = get_object_or_404(Comment, pk=comment_id)
+        commentOwner = comment.author
+
+        if not request.user.is_authenticated:
+            return Response(
+            {'detail': 'Authentication credentials were not provided.'},
+            status=status.HTTP_401_UNAUTHORIZED )
+        
+        if user != commentOwner:
+            return Response(
+            {'detail': 'You are not allowed to delete this comment.'},
+            status=status.HTTP_403_FORBIDDEN)
+        
+
+        comment.delete()
+        return Response(
+        {'detail': 'The comment was successfully deleted.'},
+        status=status.HTTP_204_NO_CONTENT)

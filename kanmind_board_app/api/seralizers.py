@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from kanmind_board_app.models import Board,Task,Comment
 from users.models import User
-from users.api.seralizer import UserProfileSerializer
+from users.api.seralizers import UserProfileSerializer, UserCommentSerializer
 
 class BoardSerializer(serializers.ModelSerializer):
 
@@ -116,3 +116,20 @@ class TaskDetailSerializer(serializers.ModelSerializer):
 
         instance.save()
         return instance
+    
+class CommentSerializer(serializers.ModelSerializer):
+    author = serializers.SerializerMethodField()
+    comment_id = serializers.SerializerMethodField()
+    created_at = serializers.DateTimeField(read_only=True)
+
+
+    def get_comment_id(self, obj):
+        return obj.id
+
+    def get_author(self, obj):
+        return f"{obj.author.first_name} {obj.author.last_name}".strip()
+    
+
+    class Meta:
+        model = Comment
+        fields = ['comment_id', 'author', 'content', 'created_at']

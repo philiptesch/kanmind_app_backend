@@ -19,7 +19,16 @@ class UserProfileSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'fullname', 'email']
 
+class UserCommentSerializer(serializers.ModelSerializer):
+    author = serializers.SerializerMethodField()
 
+    def get_author(self, obj):
+        return f"{obj.first_name} {obj.last_name}".strip()
+    
+
+    class Meta:
+        model = User
+        fields = ['author']
 
         
 
@@ -34,19 +43,19 @@ class RegistrationSerializer(serializers.ModelSerializer):
         extra_kwargs = {'password': {'write_only': True}}
 
 
-        # Email validieren
+
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError('Email already exists')
         return value
 
-    # Passwort-Check
+
     def validate(self, data):
         if data['password'] != data['repeated_password']:
             raise serializers.ValidationError({'password': 'Passwords do not match'})
         return data
 
-    # User erstellen
+
     def create(self, validated_data):
         fullname = validated_data.pop('fullname')
         name_parts = fullname.strip().split(" ", 1)
@@ -71,7 +80,7 @@ class CustomLoginSerializer(serializers.Serializer):
         email = data.get('email')
         password = data.get('password')
 
-        # Benutzer nach Email suchen
+
         user = User.objects.filter(email=email).first()
         if user is None:
             raise serializers.ValidationError("Invalid credentials")
