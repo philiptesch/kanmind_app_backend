@@ -286,3 +286,4 @@ class CommentDeleteView(APIView):
         return Response(
         {'detail': 'The comment was successfully deleted.'},
         status=status.HTTP_204_NO_CONTENT)
+    

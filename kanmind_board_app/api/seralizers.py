@@ -36,10 +36,14 @@ class TaskSerializer(serializers.ModelSerializer):
     reviewer_id= serializers.IntegerField(write_only=True)
     assignee = UserProfileSerializer(read_only=True)
     reviewer = UserProfileSerializer(read_only=True)    
+    comments_count = serializers.SerializerMethodField()
 
+
+    def get_comments_count(self, obj):
+        return obj.comments.count()
     class Meta:
         model = Task
-        fields = ['board', 'title', 'description', 'status', 'priority', 'assignee_id', 'reviewer_id', 'due_date', 'assignee', 'reviewer' ]
+        fields = ['board', 'title', 'description', 'status', 'priority', 'assignee_id', 'reviewer_id', 'due_date', 'assignee', 'reviewer', 'comments_count' ]
 
 
     def create(self, validated_data):

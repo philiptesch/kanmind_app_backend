@@ -5,7 +5,7 @@ from users.models import UserProfile
 from rest_framework import generics, status
 from users.api.seralizers import RegistrationSerializer, CustomLoginSerializer
 from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth.models import User
 
 
@@ -39,14 +39,16 @@ class CustomLogin(ObtainAuthToken):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        user = serializer.validated_data['user']
+        user = serializer.validated_data["user"]
         token, created = Token.objects.get_or_create(user=user)
-        profile = UserProfile.objects.get(user=user)
 
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        fullname = f"{user.first_name} {user.last_name}".strip()
         return Response({
             "message": "Login successful",
-            "fullname": profile.fullname,
+            
+            "fullname": fullname,
             "email": user.email,
             "token": token.key,
-            "user_id": profile.id
+            "user_id": user.id
         })
