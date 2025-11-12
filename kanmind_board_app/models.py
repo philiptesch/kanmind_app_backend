@@ -14,23 +14,24 @@ class Board(models.Model):
     def __str__(self):
         return self.title
      
+     
     
 class Task(models.Model):
     class Status(models.TextChoices):
-        TO_DO = "TO_DO", "To Do"
-        IN_PROGRESS = "IN_PROGRESS", "In Progress"
-        IN_REVIEW = "IN_REVIEW", "In Review"
-        DONE = "DONE", "Done"
+        to_do = "TO_DO", "To Do"
+        progress = "IN_PROGRESS", "In Progress"
+        review = "IN_REVIEW", "In Review"
+        done = "DONE", "Done"
     class Priority(models.TextChoices):
-        HIGH = "HIGH", "High"
-        MEDIUM = "MEDIUM", "Medium"
-        LOW = "LOW", "Low"
+        high = "HIGH", "High"
+        medium = "MEDIUM", "Medium"
+        low = "LOW", "Low"
 
     title = models.CharField(max_length=30)
     description = models.TextField(blank=True)
     board = models.ForeignKey(Board, on_delete=models.CASCADE, related_name='tasks')
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.TO_DO)
-    priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.MEDIUM)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.to_do)
+    priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.medium)
     assignee = models.ForeignKey(User,on_delete=models.CASCADE, related_name='assigned_tasks')
     reviewer = models.ForeignKey(User,on_delete=models.CASCADE, related_name='reviewed_tasks')
     due_date = models.DateField()

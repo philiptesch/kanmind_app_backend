@@ -135,6 +135,15 @@ class TaskCreateView(APIView):
     def post(self, request, ):
         seralizer = TaskSerializer(data=request.data)
 
+        board_id = seralizer.validated_data.get('board')
+
+
+        if not seralizer.is_valid():
+            return Response(seralizer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        if not Board.objects.filter(id=board_id).exists():
+            return Response({'message': 'Board id does not exist'}, status=status.HTTP_404_NOT_FOUND)
+
         if request.user not in Board.objects.get(id=request.data.get('board')).members.all() and request.user != Board.objects.get(id=request.data.get('board')).owner:
             return Response({'message': 'Forbidden. The user must either be a member of the board or the owner of the board.'}, status=status.HTTP_403_FORBIDDEN)
         
