@@ -18,14 +18,14 @@ class Board(models.Model):
     
 class Task(models.Model):
     class Status(models.TextChoices):
-        to_do = "TO_DO", "To Do"
-        progress = "IN_PROGRESS", "In Progress"
-        review = "IN_REVIEW", "In Review"
-        done = "DONE", "Done"
+        to_do = "to_do", "To Do"
+        progress = "progress", "In Progress"
+        review = "review", "In Review"
+        done = "done", "Done"
     class Priority(models.TextChoices):
-        high = "HIGH", "High"
-        medium = "MEDIUM", "Medium"
-        low = "LOW", "Low"
+      high = "high", "High"
+      medium = "medium", "Medium"
+      low = "low", "Low"
 
     title = models.CharField(max_length=30)
     description = models.TextField(blank=True)

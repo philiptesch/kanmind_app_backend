@@ -75,7 +75,7 @@ class BoardDetailView(APIView):
               return Response({'message': 'Forbidden. The user must either be a member of the board or the owner of the board.'}, status=status.HTTP_401_UNAUTHORIZED)
           
 
-          serializer = BoardSerializer(board, data=request.data, partial=True)
+          serializer = BoardDetailSerializer(board, data=request.data, partial=True)
 
 
          # if board.owner.id not in request.data.get('members'):
@@ -135,7 +135,7 @@ class TaskCreateView(APIView):
     def post(self, request, ):
         seralizer = TaskSerializer(data=request.data)
 
-        board_id = seralizer.validated_data.get('board')
+        board_id = request.data.get('board')
 
 
         if not seralizer.is_valid():
@@ -148,7 +148,8 @@ class TaskCreateView(APIView):
             return Response({'message': 'Forbidden. The user must either be a member of the board or the owner of the board.'}, status=status.HTTP_403_FORBIDDEN)
         
         if seralizer.is_valid():
-            task = seralizer.save()
+
+            task = seralizer.save(owner=request.user)
             return Response(seralizer.data, status=status.HTTP_201_CREATED)
 
         return Response(seralizer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -248,8 +249,9 @@ class CommentView(APIView):
         serializer = CommentSerializer(data=request.data)
 
         if serializer.is_valid():
-            serializer.save(author=request.user, task=task)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            comment = serializer.save(author=request.user, task=task)
+            response_serializer = CommentSerializer(comment)
+            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
