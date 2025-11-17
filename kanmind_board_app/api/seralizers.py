@@ -36,6 +36,7 @@ class TaskSerializer(serializers.ModelSerializer):
     reviewer_id= serializers.IntegerField(write_only=True)
     assignee = UserProfileSerializer(read_only=True)
     reviewer = UserProfileSerializer(read_only=True)    
+    id = serializers.IntegerField(read_only=True)
     comments_count = serializers.SerializerMethodField()
 
 
@@ -43,7 +44,7 @@ class TaskSerializer(serializers.ModelSerializer):
         return obj.comments.count()
     class Meta:
         model = Task
-        fields = ['board', 'title', 'description', 'status', 'priority', 'assignee_id', 'reviewer_id', 'due_date', 'assignee', 'reviewer', 'comments_count' ]
+        fields = ['id','board', 'title', 'description', 'status', 'priority', 'assignee_id', 'reviewer_id', 'due_date', 'assignee', 'reviewer', 'comments_count' ]
 
 
     def create(self, validated_data):
@@ -69,6 +70,12 @@ class BoardDetailSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'owner_id', 'members', 'tasks']
 
 
+class BoardDetailForPatchSerializer(serializers.ModelSerializer):
+    owner_data = UserProfileSerializer(read_only=True)
+    members_data = UserProfileSerializer(read_only=True, many=True)
+    class Meta:
+        model = Board
+        fields = ['id', 'title', 'owner_data', 'members_data',]
 
       
 class TaskAssignSerializer(serializers.ModelSerializer):

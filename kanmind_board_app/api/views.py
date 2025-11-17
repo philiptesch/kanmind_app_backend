@@ -1,4 +1,4 @@
-from .seralizers import BoardSerializer, BoardDetailSerializer, TaskSerializer, TaskAssignSerializer, TaskDetailSerializer, CommentSerializer
+from .seralizers import BoardSerializer, BoardDetailSerializer, TaskSerializer, TaskAssignSerializer, TaskDetailSerializer, CommentSerializer,BoardDetailForPatchSerializer
 from kanmind_board_app.models import Board, Task, Comment
 from rest_framework.views import APIView
 from rest_framework import mixins
@@ -75,19 +75,15 @@ class BoardDetailView(APIView):
               return Response({'message': 'Forbidden. The user must either be a member of the board or the owner of the board.'}, status=status.HTTP_401_UNAUTHORIZED)
           
 
-          serializer = BoardDetailSerializer(board, data=request.data, partial=True)
+          serializer = BoardDetailForPatchSerializer(board, data=request.data, partial=True)
 
 
          # if board.owner.id not in request.data.get('members'):
            #     return Response({'message': 'The owner must be a member of the board.'}, status=400)
 
           if serializer.is_valid():
-                serializer.save()
-                if request.user == board.owner:
-                    role = 'owner'
-                else:
-                    role = 'member'
-                return Response({'message': f'is {role}', 'data': serializer.data}, status=200)
+                serializer.save(owner_data=board.owner, members_data=board.members.all())
+                return Response(serializer.data, status=200)
 
           return Response(serializer.errors, status=400)
     
