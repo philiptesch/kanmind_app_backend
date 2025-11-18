@@ -37,9 +37,20 @@ git clone https://github.com/philiptesch/kanmind_app_backend
 ```
 
 ### 2️⃣ Create and activate a virtual environment
+### Windows (PowerShell)
+```bash
+python -m venv env
+.\env\Scripts\Activate.ps1   
+```
+### Windows (CMD)
+```bash
+python -m venv env
+env\Scripts\activate.bat 
+```
+### macOS / Linux
 ```bash
 python3 -m venv env
-source env/bin/activate   
+source env/bin/activate
 ```
 
 ### 3️⃣ Install dependencies
