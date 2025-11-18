@@ -42,7 +42,6 @@ class CustomLogin(ObtainAuthToken):
             user = serializer.validated_data["user"]
             token, created = Token.objects.get_or_create(user=user)
 
-            profile, _ = UserProfile.objects.get_or_create(user=user)
             fullname = f"{user.first_name} {user.last_name}".strip()
             return Response({
             "message": "Login successful",
