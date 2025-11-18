@@ -37,18 +37,18 @@ class CustomLogin(ObtainAuthToken):
 
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if serializer.is_valid():
 
-        user = serializer.validated_data["user"]
-        token, created = Token.objects.get_or_create(user=user)
+            user = serializer.validated_data["user"]
+            token, created = Token.objects.get_or_create(user=user)
 
-        profile, _ = UserProfile.objects.get_or_create(user=user)
-        fullname = f"{user.first_name} {user.last_name}".strip()
-        return Response({
+            profile, _ = UserProfile.objects.get_or_create(user=user)
+            fullname = f"{user.first_name} {user.last_name}".strip()
+            return Response({
             "message": "Login successful",
-            
             "fullname": fullname,
             "email": user.email,
             "token": token.key,
             "user_id": user.id
-        })
+            })
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

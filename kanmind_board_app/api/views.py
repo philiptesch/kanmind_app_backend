@@ -53,7 +53,7 @@ class BoardDetailView(APIView):
           
 
           if request.user != board.owner and request.user not in board.members.all():
-              return Response({'message': 'Forbidden. The user must either be a member of the board or the owner of the board.'}, status=status.HTTP_401_UNAUTHORIZED)
+              return Response({'message': 'Forbidden. The user must either be a member of the board or the owner of the board.'}, status=status.HTTP_403_FORBIDDEN)
 
           if owner:
                 serializer = BoardDetailSerializer(board)
@@ -72,7 +72,7 @@ class BoardDetailView(APIView):
           
 
           if request.user != board.owner and request.user not in board.members.all():
-              return Response({'message': 'Forbidden. The user must either be a member of the board or the owner of the board.'}, status=status.HTTP_401_UNAUTHORIZED)
+              return Response({'message': 'Forbidden. The user must either be a member of the board or the owner of the board.'}, status=status.HTTP_403_FORBIDDEN)
           
 
           serializer = BoardDetailForPatchSerializer(board, data=request.data, partial=True)
@@ -91,8 +91,15 @@ class BoardDetailView(APIView):
     def delete(self, request, pk):
         board = get_object_or_404(Board, pk=pk)
 
+
+        if not request.user.is_authenticated:
+            return Response(
+            {'detail': 'Authentication credentials were not provided.'},
+            status=status.HTTP_401_UNAUTHORIZED )
+
+
         if request.user != board.owner:
-            return Response({'message': 'Forbidden. Only the owner can delete the board.'}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({'message': 'Forbidden. Only the owner can delete the board.'}, status=status.HTTP_403_FORBIDDEN)
         
 
         board.delete()
@@ -132,10 +139,13 @@ class TaskCreateView(APIView):
         seralizer = TaskSerializer(data=request.data)
 
         board_id = request.data.get('board')
+        
 
+        if not request.user.is_authenticated:
+            return Response(
+            {'detail': 'Authentication credentials were not provided.'},
+            status=status.HTTP_401_UNAUTHORIZED )
 
-        if not seralizer.is_valid():
-            return Response(seralizer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         if not Board.objects.filter(id=board_id).exists():
             return Response({'message': 'Board id does not exist'}, status=status.HTTP_404_NOT_FOUND)

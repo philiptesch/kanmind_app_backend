@@ -33,3 +33,18 @@ ENV/
 # Migrations (optional, je nach Workflow)
 **/migrations/*.pyc
 **/migrations/__pycache__/
+**/migrations/
+!**/migrations/__init__.py
+
+# Coverage / testing
+htmlcov/
+.coverage
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+.cache
+.pytest_cache/
+nosetests.xml
+test-results/

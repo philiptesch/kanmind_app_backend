@@ -5,7 +5,7 @@ from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.permissions import AllowAny
 from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
-
+from django.contrib.auth import authenticate
 
 
 class UserProfileSerializer(serializers.ModelSerializer):   
@@ -80,10 +80,13 @@ class CustomLoginSerializer(serializers.Serializer):
         email = data.get('email')
         password = data.get('password')
 
-
         user = User.objects.filter(email=email).first()
         if user is None:
             raise serializers.ValidationError("Invalid credentials")
+        
+        user = authenticate(username=user.username, password=password)
+        if not user:
+            raise serializers.ValidationError('Invalid credentials')
 
         data['user'] = user
         return data
