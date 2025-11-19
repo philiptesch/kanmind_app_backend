@@ -1,6 +1,5 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from users.models import UserProfile
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.permissions import AllowAny
 from rest_framework.authtoken.models import Token

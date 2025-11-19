@@ -48,7 +48,7 @@ class BoardDetailView(APIView):
           owner = Board.objects.filter(owner= request.user)
           members = Board.objects.filter(members= request.user)
           board = get_object_or_404(Board, pk=pk)
-          if not owner and not members:
+          if not request.user.is_authenticated:
            return Response({'message': 'Not authorized. The user must be logged in'}, status=status.HTTP_401_UNAUTHORIZED)
           
 
@@ -67,7 +67,7 @@ class BoardDetailView(APIView):
           owner = Board.objects.filter(owner= request.user)
           members = Board.objects.filter(members= request.user)
           board = get_object_or_404(Board, pk=pk)
-          if not owner and not members:
+          if not request.user.is_authenticated:
            return Response({'message': 'Not authorized. The user must be logged in'}, status=status.HTTP_401_UNAUTHORIZED)
           
 

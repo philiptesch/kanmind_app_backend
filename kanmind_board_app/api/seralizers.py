@@ -23,10 +23,10 @@ class BoardSerializer(serializers.ModelSerializer):
     
 
     def get_tasks_to_do_count(self, obj):
-        return obj.tasks.filter(status='TO_DO').count()
+        return obj.tasks.filter(status='to_do').count()
 
     def get_tasks_high_prio_count(self, obj):
-        return obj.tasks.filter(priority='HIGH').count()
+        return obj.tasks.filter(priority='high').count()
     
     def get_ticket_count(self, obj):
         return obj.tasks.count()
@@ -73,9 +73,10 @@ class BoardDetailSerializer(serializers.ModelSerializer):
 class BoardDetailForPatchSerializer(serializers.ModelSerializer):
     owner_data = UserProfileSerializer(read_only=True)
     members_data = UserProfileSerializer(read_only=True, many=True)
+    members = serializers.PrimaryKeyRelatedField(many=True,queryset=User.objects.all(),required=False,write_only=True)
     class Meta:
         model = Board
-        fields = ['id', 'title', 'owner_data', 'members_data',]
+        fields = ['id', 'title', 'owner_data', 'members_data', 'members']
 
       
 class TaskAssignSerializer(serializers.ModelSerializer):
