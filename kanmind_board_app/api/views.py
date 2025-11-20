@@ -10,12 +10,13 @@ from rest_framework.response import Response
 from django.views.generic import ListView
 from rest_framework import status
 from django.shortcuts import get_object_or_404
+from django.contrib.auth.models import User
 class BoardsView(APIView):
 
     permission_classes =[IsAuthenticated]
 
     def get(self, request):
-        boards = Board.objects.filter(members=request.user) | Board.objects.filter(owner=request.user)
+        boards = Board.objects.filter(members=request.user) | Board.objects.filter(owner=request.user).distinct()
         serializer = BoardSerializer(boards, many=True)
 
         if not serializer.data:
@@ -139,7 +140,16 @@ class TaskCreateView(APIView):
         seralizer = TaskSerializer(data=request.data)
 
         board_id = request.data.get('board')
-        
+        assignee_id = request.data.get('assignee_id')
+        reviewer_id = request.data.get('reviewer_id')
+
+
+        if not (User.objects.filter(id=assignee_id).exists() and User.objects.filter(id=reviewer_id).exists()):
+              return Response(
+            {'detail': 'assignee_i or reviewer_id are not match .'},
+            status=status.HTTP_400_BAD_REQUEST )
+
+
 
         if not request.user.is_authenticated:
             return Response(
