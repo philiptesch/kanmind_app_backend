@@ -129,14 +129,10 @@ class TaskDetailSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
     
-class CommentSerializer(serializers.ModelSerializer):
+class CommentResponseSerializer(serializers.ModelSerializer):
     author = serializers.SerializerMethodField()
-    comment_id = serializers.SerializerMethodField()
     created_at = serializers.DateTimeField(read_only=True)
 
-
-    def get_comment_id(self, obj):
-        return obj.id
 
     def get_author(self, obj):
         return f"{obj.author.first_name} {obj.author.last_name}".strip()
@@ -144,4 +140,12 @@ class CommentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Comment
-        fields = ['comment_id', 'author', 'content', 'created_at']
+        fields = ['id', 'author', 'content', 'created_at']
+
+
+
+class CommentSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Comment
+        fields = ['content']

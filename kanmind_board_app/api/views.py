@@ -1,4 +1,4 @@
-from .seralizers import BoardSerializer, BoardDetailSerializer, TaskSerializer, TaskAssignSerializer, TaskDetailSerializer, CommentSerializer,BoardDetailForPatchSerializer
+from .seralizers import BoardSerializer, BoardDetailSerializer, TaskSerializer, TaskAssignSerializer, TaskDetailSerializer, CommentSerializer,BoardDetailForPatchSerializer, CommentResponseSerializer
 from kanmind_board_app.models import Board, Task, Comment
 from rest_framework.views import APIView
 from rest_framework import mixins
@@ -11,12 +11,13 @@ from django.views.generic import ListView
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
+from django.db.models import Q
 class BoardsView(APIView):
 
     permission_classes =[IsAuthenticated]
 
     def get(self, request):
-        boards = Board.objects.filter(members=request.user) | Board.objects.filter(owner=request.user).distinct()
+        boards = Board.objects.filter(Q(members=request.user) | Q(owner=request.user)).distinct()
         serializer = BoardSerializer(boards, many=True)
 
         if not serializer.data:
@@ -27,7 +28,6 @@ class BoardsView(APIView):
         serializer = BoardSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(owner=request.user)
-
 
             if not serializer.data:
                 return Response({'message': 'Not authorized. The user must be logged in'}, status=status.HTTP_401_UNAUTHORIZED)
@@ -143,6 +143,10 @@ class TaskCreateView(APIView):
         assignee_id = request.data.get('assignee_id')
         reviewer_id = request.data.get('reviewer_id')
 
+        if not (assignee_id.isdigit() and reviewer_id.isdigit()):
+            return Response(
+            {'detail': 'assignee_id and reviewer_id must be integers.'},
+                status=status.HTTP_400_BAD_REQUEST)
 
         if not (User.objects.filter(id=assignee_id).exists() and User.objects.filter(id=reviewer_id).exists()):
               return Response(
@@ -251,7 +255,7 @@ class CommentView(APIView):
     def post(self, request, pk, *args, **kwargs):
         task = get_object_or_404(Task, pk=pk)
         board = task.board
-
+        allowed_fields = ['content']
         if not request.user.is_authenticated:
             return Response(
             {'detail': 'Authentication credentials were not provided.'},
@@ -261,12 +265,26 @@ class CommentView(APIView):
             return Response(
             {'detail': 'You are not allowed to comment on this task.'},
             status=status.HTTP_403_FORBIDDEN)
+        
+        extra_fields = set(request.data.keys()) - set(allowed_fields)
+        if extra_fields:
+            return Response(
+        {'detail': f'Extra fields not allowed: {extra_fields} content is only allowed', },
+        status=400)
 
-        serializer = CommentSerializer(data=request.data)
+    
+        data = request.data.get('content', '').strip()
+
+        if not data:
+            return Response(
+            {'detail: content is empty', },
+        status=400)
+
+        serializer = CommentSerializer(data=data)
 
         if serializer.is_valid():
             comment = serializer.save(author=request.user, task=task)
-            response_serializer = CommentSerializer(comment)
+            response_serializer = CommentResponseSerializer(comment)
             return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -295,7 +313,7 @@ class CommentDeleteView(APIView):
 
     def delete(self, request,task_id,  comment_id, *args, **kwargs):
         user = request.user
-        comment = get_object_or_404(Comment, pk=comment_id)
+        comment = get_object_or_404(Comment, pk=comment_id, task_id=task_id)
         commentOwner = comment.author
 
         if not request.user.is_authenticated:
