@@ -84,22 +84,7 @@ python manage.py runserver
 📍 API Endpoint: http://127.0.0.1:8000/  
 📍 Admin Panel: http://127.0.0.1:8000/admin/
 
----
 
-## 🔐 Test User (Gast-Account)
-For quick testing, you can use the following guest account:  
-
-```json
-{
-  "email": "example@mail.de",
-  "password": "examplePassword"
-}
-```
-
-- Use this account to test API endpoints such as login, board management, or task management.
-- Note: Any changes made with this user may be deleted if the database is reset.
-
----
 
 ## 📖 API Overview
 
