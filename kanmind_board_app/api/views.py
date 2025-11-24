@@ -313,7 +313,7 @@ class CommentDeleteView(APIView):
 
     def delete(self, request,task_id,  comment_id, *args, **kwargs):
         user = request.user
-        comment = get_object_or_404(Comment, pk=comment_id, task_id=task_id)
+        comment = get_object_or_404(Comment, comment_id=comment_id, task_id=task_id)
         commentOwner = comment.author
 
         if not request.user.is_authenticated:
