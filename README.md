@@ -61,8 +61,7 @@ pip install -r requirements.txt
 ### 4️⃣ Apply database migrations
 1 Makemigrations for each app (creates migration files from models):
 ```bash
-python manage.py makemigrations python manage.py
-makemigrations kanmind_board_app # separate for Board/Task/Comment models
+python manage.py makemigration
 ```
 2 Migrate (applies the migrations to the database):
 ```bash
