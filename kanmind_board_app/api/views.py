@@ -143,7 +143,7 @@ class TaskCreateView(APIView):
         assignee_id = request.data.get('assignee_id')
         reviewer_id = request.data.get('reviewer_id')
 
-        if not (assignee_id.isdigit() and reviewer_id.isdigit()):
+        if not isinstance(assignee_id, int) or not isinstance(reviewer_id, int):
             return Response(
             {'detail': 'assignee_id and reviewer_id must be integers.'},
                 status=status.HTTP_400_BAD_REQUEST)
