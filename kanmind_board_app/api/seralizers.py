@@ -4,14 +4,18 @@ from users.models import User
 from users.api.seralizers import UserProfileSerializer
 
 
-# Serializer for Board overview (for list view)
 class BoardSerializer(serializers.ModelSerializer):
-    owner_id = serializers.IntegerField(read_only=True)  # ID of the board owner
-    members = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True, many=True)  # Members by ID
-    member_count = serializers.SerializerMethodField()  # Number of members
-    ticket_count = serializers.SerializerMethodField()  # Total number of tasks
-    tasks_to_do_count = serializers.SerializerMethodField()  # Number of "to_do" tasks
-    tasks_high_prio_count = serializers.SerializerMethodField()  # Number of high-priority tasks
+    """
+    Serializer for representing boards including
+    members, owner, and various counts
+    (members, tickets, task status).
+    """
+    owner_id = serializers.IntegerField(read_only=True)  
+    members = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True, many=True)  
+    member_count = serializers.SerializerMethodField()  
+    ticket_count = serializers.SerializerMethodField()  
+    tasks_to_do_count = serializers.SerializerMethodField()  
+    tasks_high_prio_count = serializers.SerializerMethodField()  
 
     class Meta:
         model = Board
@@ -33,14 +37,18 @@ class BoardSerializer(serializers.ModelSerializer):
         return obj.tasks.count()
 
 
-# Serializer for Task creation and representation
 class TaskSerializer(serializers.ModelSerializer):
-    assignee_id = serializers.IntegerField(write_only=True)  # ID of the assigned user
-    reviewer_id = serializers.IntegerField(write_only=True)  # ID of the reviewer
-    assignee = UserProfileSerializer(read_only=True)  # Assignee details
-    reviewer = UserProfileSerializer(read_only=True)  # Reviewer details
+    """
+    Serializer for tasks of a board including
+    comment count and simplified user info
+    for assignees and reviewers.
+    """
+    assignee_id = serializers.IntegerField(write_only=True)  
+    reviewer_id = serializers.IntegerField(write_only=True)  
+    assignee = UserProfileSerializer(read_only=True)  
+    reviewer = UserProfileSerializer(read_only=True)  
     id = serializers.IntegerField(read_only=True)
-    comments_count = serializers.SerializerMethodField()  # Number of comments
+    comments_count = serializers.SerializerMethodField()  
 
     class Meta:
         model = Task
@@ -69,8 +77,11 @@ class TaskSerializer(serializers.ModelSerializer):
         return task
 
 
-# Serializer for Board details including tasks
 class BoardDetailSerializer(serializers.ModelSerializer):
+    """
+    Detailed serializer for boards with full
+    user information for members and tasks.
+    """
     owner_id = serializers.IntegerField(read_only=True)
     members = UserProfileSerializer(read_only=True, many=True)
     tasks = TaskSerializer(read_only=True, many=True)
@@ -80,8 +91,11 @@ class BoardDetailSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'owner_id', 'members', 'tasks']
 
 
-# Serializer for Board PATCH (partial update)
 class BoardDetailForPatchSerializer(serializers.ModelSerializer):
+    """
+    Serializer for updating boards, showing owner and
+    members as read-only fields using UserProfileSerializer and owner_data as just.
+    """
     owner_data = UserProfileSerializer(read_only=True)
     members_data = UserProfileSerializer(read_only=True, many=True)
     members = serializers.PrimaryKeyRelatedField(
@@ -95,9 +109,12 @@ class BoardDetailForPatchSerializer(serializers.ModelSerializer):
         model = Board
         fields = ['id', 'title', 'owner_data', 'members_data', 'members']
 
-
-# Serializer for Task assignment list view
-class TaskAssignSerializer(serializers.ModelSerializer):
+class TaskAssignOrReviewerSerializer(serializers.ModelSerializer):
+    """
+   Serializes Task objects for list views where a user is:
+    assignee (assigned user)
+    reviewer (reviewing user)
+    """
     assignee = UserProfileSerializer(read_only=True)
     reviewer = UserProfileSerializer(read_only=True)
     comments_count = serializers.SerializerMethodField()
@@ -111,8 +128,11 @@ class TaskAssignSerializer(serializers.ModelSerializer):
         return obj.comments.count()
 
 
-# Serializer for Task detail view (PATCH/UPDATE)
 class TaskDetailSerializer(serializers.ModelSerializer):
+    """
+    Detailed serializer for a single task
+    with assignees and reviewers as nested user data.
+    """
     assignee_id = serializers.IntegerField(write_only=True)
     reviewer_id = serializers.IntegerField(write_only=True)
     assignee = UserProfileSerializer(read_only=True)
@@ -146,9 +166,13 @@ class TaskDetailSerializer(serializers.ModelSerializer):
 
         instance.save()
         return instance
+    
 
-# Serializer for Comment response (GET)
 class CommentResponseSerializer(serializers.ModelSerializer):
+    """
+    Serializer for returning comments with author's username, id, created_at.
+    """
+
     author = serializers.SerializerMethodField()
     created_at = serializers.DateTimeField(read_only=True)
 
@@ -163,8 +187,10 @@ class CommentResponseSerializer(serializers.ModelSerializer):
         return f"{obj.author.first_name} {obj.author.last_name}".strip()
 
 
-# Serializer for Comment creation (POST)
 class CommentSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating comments with only the content field.
+    """    
     class Meta:
         model = Comment
         fields = ['content']

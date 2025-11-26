@@ -1,8 +1,12 @@
-from .seralizers import BoardSerializer, BoardDetailSerializer, TaskSerializer, TaskAssignSerializer, TaskDetailSerializer, CommentSerializer,BoardDetailForPatchSerializer, CommentResponseSerializer
+from .seralizers import (
+    BoardSerializer, BoardDetailSerializer, TaskSerializer, TaskAssignOrReviewerSerializer,
+    TaskDetailSerializer, CommentSerializer, BoardDetailForPatchSerializer,
+    CommentResponseSerializer
+)
 from kanmind_board_app.models import Board, Task, Comment
 from rest_framework.views import APIView
 from rest_framework import generics
-from rest_framework.permissions import  IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from .permisson import isMember, isAssigneeOrReviewer, isBoardOwnerorMember
 from rest_framework.response import Response
 from rest_framework import status
@@ -11,311 +15,297 @@ from django.contrib.auth.models import User
 from django.db.models import Q
 
 
-# View to list all boards or create a new board
+
 class BoardsView(APIView):
-    permission_classes =[IsAuthenticated]
+    """
+    API view for listing and creating boards.
+    GET: Returns all boards where the user is a member or owner.
+    POST: Creates a new board with the logged-in user as the owner.
+    """
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         """
-        GET all boards for authenticated user
+        GET:
+        - Returns boards where the user is owner or member.
+        - Includes counts: members, tasks, tasks to do, high-priority tasks.
         """
         boards = Board.objects.filter(Q(members=request.user) | Q(owner=request.user)).distinct()
         serializer = BoardSerializer(boards, many=True)
 
         if not serializer.data:
-            return Response({'message': 'Not authorized. The user must be logged in'}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({'message': 'No boards found or not authorized.'}, status=status.HTTP_401_UNAUTHORIZED)
         return Response(serializer.data)
 
     def post(self, request):
         """
-        POST a new board with the authenticated user as owner
+        POST:
+         - Serializer: BoardSerializer (overview)
+        - Creates a new board with the authenticated user as owner.
+        - Expects 'title' and optionally 'members' as IDs.
         """
         serializer = BoardSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(owner=request.user)
-
-            if not serializer.data:
-                return Response({'message': 'Not authorized. The user must be logged in'}, status=status.HTTP_401_UNAUTHORIZED)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# View to retrieve, update, or delete a specific board
 class BoardDetailView(APIView):
-    permission_classes =[isBoardOwnerorMember, IsAuthenticated]
+    """
+    API view for retrieving details, updating (PATCH), and deleting a board.
+    Access rights: Only board owners or members.
+    """
+    permission_classes = [isBoardOwnerorMember, IsAuthenticated]
 
     def get(self, request, pk):
         """
-        GET a board by pk if user is owner or member
+         GET:
+        - (includes full tasks list)
+        - Returns board details with members and tasks.
         """
-        owner = Board.objects.filter(owner= request.user)
-        members = Board.objects.filter(members= request.user)
         board = get_object_or_404(Board, pk=pk)
 
-        if not request.user.is_authenticated:
-            return Response({'message': 'Not authorized. The user must be logged in'}, status=status.HTTP_401_UNAUTHORIZED)
-
         if request.user != board.owner and request.user not in board.members.all():
-            return Response({'message': 'Forbidden. The user must either be a member of the board or the owner of the board.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'message': 'Forbidden. Only owner or members can access this board.'}, status=status.HTTP_403_FORBIDDEN)
 
-        if owner:
-            serializer = BoardDetailSerializer(board)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        elif members:
-            serializer = BoardDetailSerializer(board)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+        serializer = BoardDetailSerializer(board)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def patch(self, request, pk):
         """
-        PATCH (partial update) a board
+        PATCH:
+        - Update optional fields: `title`, `members` (IDs)
+        - Response includes read-only: `owner_data`, `members_data`
         """
-        owner = Board.objects.filter(owner= request.user)
-        members = Board.objects.filter(members= request.user)
         board = get_object_or_404(Board, pk=pk)
 
-        if not request.user.is_authenticated:
-            return Response({'message': 'Not authorized. The user must be logged in'}, status=status.HTTP_401_UNAUTHORIZED)
-
         if request.user != board.owner and request.user not in board.members.all():
-            return Response({'message': 'Forbidden. The user must either be a member of the board or the owner of the board.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'message': 'Forbidden. Only owner or members can update this board.'}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = BoardDetailForPatchSerializer(board, data=request.data, partial=True)
-
         if serializer.is_valid():
             serializer.save(owner_data=board.owner, members_data=board.members.all())
             return Response(serializer.data, status=200)
-
         return Response(serializer.errors, status=400)
 
     def delete(self, request, pk):
-        """
-        DELETE a board, only allowed for owner
-        """
+        """"
+        DELETE:
+        - No serializer needed.
+        - Deletes the board if user is owner
+        """ 
         board = get_object_or_404(Board, pk=pk)
 
-        if not request.user.is_authenticated:
-            return Response({'detail': 'Authentication credentials were not provided.'}, status=status.HTTP_401_UNAUTHORIZED)
-
         if request.user != board.owner:
-            return Response({'message': 'Forbidden. Only the owner can delete the board.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'message': 'Forbidden. Only owner can delete this board.'}, status=status.HTTP_403_FORBIDDEN)
 
         board.delete()
         return Response({'message': 'Board deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
 
 
-# View to check if provided email matches authenticated user
+
 class EmailCheckView(APIView):
+    """
+    Check if provided email matches the authenticated user.
+    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         """
-        GET request with email parameter to check against authenticated user
+        GET:
+        - Query param: 'email'
+        - Returns user ID, full name, and email if matches
         """
-        user = request.user
-        email  = request.query_params.get('email') 
-
+        email = request.query_params.get('email')
         if not email:
             return Response({'error': 'Email parameter is required.'}, status=400)
 
-        if not user.is_authenticated:
-            return Response({'error': 'Authentication required.'}, status=403)
-
+        user = request.user
         if user.email == email:
             return Response({
                 'id': user.id,
                 'fullname': user.get_full_name(),
-                'email': email}, status=200)
+                'email': email
+            }, status=200)
         else:
-            return Response({'error': 'Email does not match the authenticated user.'}, status=404)
+            return Response({'error': 'Email does not match authenticated user.'}, status=404)
 
 
-# View to create a task
 class TaskCreateView(APIView):
+    """
+    Create a task in a board.
+    - Only board members or owner can create tasks.
+    """
     permission_classes = [IsAuthenticated, isMember]
 
     def post(self, request):
+        """  
+        POST:
+        - Required: board ID, assignee_id, reviewer_id, title, due_date
+        - Automatically sets authenticated user as task owner
+        - assignee_id and reviewer_id must be existing user
         """
-        POST to create a task
-        """
-        seralizer = TaskSerializer(data=request.data)
-
+        serializer = TaskSerializer(data=request.data)
         board_id = request.data.get('board')
         assignee_id = request.data.get('assignee_id')
         reviewer_id = request.data.get('reviewer_id')
 
         if not isinstance(assignee_id, int) or not isinstance(reviewer_id, int):
-            return Response({'detail': 'assignee_id and reviewer_id must be integers.'}, status=status.HTTP_400_BAD_REQUEST)
-
+            return Response({'detail': 'assignee_id and reviewer_id must be integers.'}, status=400)
         if not (User.objects.filter(id=assignee_id).exists() and User.objects.filter(id=reviewer_id).exists()):
-            return Response({'detail': 'assignee_i or reviewer_id are not match .'}, status=status.HTTP_400_BAD_REQUEST )
-
-        if not request.user.is_authenticated:
-            return Response({'detail': 'Authentication credentials were not provided.'}, status=status.HTTP_401_UNAUTHORIZED)
-
+            return Response({'detail': 'Assignee or reviewer does not exist.'}, status=400)
         if not Board.objects.filter(id=board_id).exists():
-            return Response({'message': 'Board id does not exist'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'message': 'Board id does not exist'}, status=404)
 
-        if request.user not in Board.objects.get(id=request.data.get('board')).members.all() and request.user != Board.objects.get(id=request.data.get('board')).owner:
-            return Response({'message': 'Forbidden. The user must either be a member of the board or the owner of the board.'}, status=status.HTTP_403_FORBIDDEN)
+        board = Board.objects.get(id=board_id)
+        if request.user not in board.members.all() and request.user != board.owner:
+            return Response({'message': 'Forbidden. Must be a member or owner of board.'}, status=403)
 
-        if seralizer.is_valid():
-            task = seralizer.save(owner=request.user)
-            return Response(seralizer.data, status=status.HTTP_201_CREATED)
+        if serializer.is_valid():
+            serializer.save(owner=request.user)
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
 
-        return Response(seralizer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
-# View to list tasks assigned to the user
 class TaskAssignView(generics.ListCreateAPIView):
+    """
+    List all tasks assigned to the authenticated user.
+    """
     permission_classes = [IsAuthenticated, isAssigneeOrReviewer]
 
     def get(self, request):
         """
-        GET all tasks assigned to the authenticated user
+        GET:
+        - Returns tasks where user is assignee
         """
         user = request.user
         tasks = Task.objects.filter(assignee=user)
-        serializer = TaskAssignSerializer(tasks,many=True)
-
-        if not serializer.data: 
-            return Response({'message': 'No tasks assigned to you.'}, status=status.HTTP_401_UNAUTHORIZED)
-
-        return Response(serializer.data)        
+        serializer = TaskAssignOrReviewerSerializer(tasks, many=True)
+        if not serializer.data:
+            return Response({'message': 'No tasks assigned.'}, status=401)
+        return Response(serializer.data)
 
 
-# View to list tasks the user needs to review
 class TaskReviewView(generics.ListCreateAPIView):
+    """
+    List all tasks the authenticated user is assigned to review.
+
+    """
     permission_classes = [IsAuthenticated, isAssigneeOrReviewer]
 
     def get(self, request):
         """
-        GET all tasks for the user to review
+        GET:
+        - Returns tasks where user is reviewer
         """
         user = request.user
         tasks = Task.objects.filter(reviewer=user)
-        serializer = TaskAssignSerializer(tasks,many=True)
-
-        if not serializer.data: 
-            return Response({'message': 'No tasks to review.'}, status=status.HTTP_401_UNAUTHORIZED)
-
+        serializer = TaskAssignOrReviewerSerializer(tasks, many=True)
+        if not serializer.data:
+            return Response({'message': 'No tasks to review.'}, status=401)
         return Response(serializer.data)
 
 
-# View to retrieve, update, or delete a specific task
 class TaskDetailView(APIView):
+    """
+    Retrieve, update, or delete a specific task.
+    - Only task creators or board owners can make changes
+    """
     permission_classes = [IsAuthenticated, isMember]
 
     def patch(self, request, pk, *args, **kwargs):
-        """
-        PATCH (partial update) a task
-        """
-        task = get_object_or_404(Task, pk=pk)
-        board = task.board  
-
-        if not request.user.is_authenticated:
-            return Response({'detail': 'Authentication credentials were not provided.'}, status=status.HTTP_401_UNAUTHORIZED)
-
-        if request.user != board.owner and request.user not in board.members.all():
-            return Response({'detail': 'You are not allowed to modify this task.'}, status=status.HTTP_403_FORBIDDEN)
-
-        serializer = TaskDetailSerializer(task, data=request.data, partial=True)
-
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=200)
-
-        return Response(serializer.errors, status=400)
-
-    def delete(self, request, pk, *args, **kwargs):
-        """
-        DELETE a task if user is owner or board member
+        """ 
+        PATCH:
+        - Updates task fields 
+        - Only task creators or board owners can update a task
         """
         task = get_object_or_404(Task, pk=pk)
         board = task.board
-
-        if not request.user.is_authenticated:
-            return Response({'detail': 'Authentication credentials were not provided.'}, status=status.HTTP_401_UNAUTHORIZED)
-
         if request.user != board.owner and request.user not in board.members.all():
-            return Response({'detail': 'You are not allowed to delete this task.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'detail': 'Cannot modify task.'}, status=403)
 
+        serializer = TaskDetailSerializer(task, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=200)
+        return Response(serializer.errors, status=400)
+
+    def delete(self, request, pk, *args, **kwargs):
+        """ 
+        DELETE:
+        - deletes task
+        - Only task creators or board owners can delete a task
+        """
+        task = get_object_or_404(Task, pk=pk)
+        board = task.board
+        if request.user != board.owner and request.user not in board.members.all():
+            return Response({'detail': 'Cannot delete task.'}, status=403)
         task.delete()
-        return Response({'detail': 'The task was successfully deleted.'}, status=status.HTTP_204_NO_CONTENT)
+        return Response({'detail': 'Task deleted successfully.'}, status=204)
 
 
-# View to create and list comments for a task
 class CommentView(APIView):
+    """
+    Create or list comments for a task.
+    - Only board members or owner can comment or view comments
+    """
     permission_classes = [IsAuthenticated, isMember]
 
     def post(self, request, pk, *args, **kwargs):
         """
-        POST a comment for a task
+        POST:
+        - Serializer: CommentSerializer (input)
+        - Serializer: CommentResponseSerializer (output)
+        - Field allowed: 'content' only
         """
         task = get_object_or_404(Task, pk=pk)
         board = task.board
-        allowed_fields = ['content']
 
-        if not request.user.is_authenticated:
-            return Response({'detail': 'Authentication credentials were not provided.'}, status=status.HTTP_401_UNAUTHORIZED)
-
-        if request.user != board.owner and request.user not in board.members.all():
-            return Response({'detail': 'You are not allowed to comment on this task.'}, status=status.HTTP_403_FORBIDDEN)
-
-        extra_fields = set(request.data.keys()) - set(allowed_fields)
+        extra_fields = set(request.data.keys()) - {'content'}
         if extra_fields:
-            return Response({'detail': f'Extra fields not allowed: {extra_fields} content is only allowed'}, status=400)
+            return Response({'detail': f'Extra fields not allowed: {extra_fields}'}, status=400)
 
-        data = request.data.get('content', '').strip()
-
-        if not data:
-            return Response({'detail: content is empty'}, status=400)
+        content = request.data.get('content', '').strip()
+        if not content:
+            return Response({'detail': 'Content is empty.'}, status=400)
 
         serializer = CommentSerializer(data=request.data)
-
         if serializer.is_valid():
             comment = serializer.save(author=request.user, task=task)
             response_serializer = CommentResponseSerializer(comment)
-            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(response_serializer.data, status=201)
+        return Response(serializer.errors, status=400)
 
     def get(self, request, pk, *args, **kwargs):
         """
-        GET all comments for a task
+        GET:
+        - Lists all comments for a task
+        - Only board `owner` or `members` can view
+    
         """
-        user = request.user
         task = get_object_or_404(Task, pk=pk)
         board = task.board
 
-        if not user.is_authenticated:
-            return Response({'detail': 'Authentication credentials were not provided.'}, status=status.HTTP_401_UNAUTHORIZED)
-
-        if request.user != board.owner and user not in board.members.all():
-            return Response({'detail': 'You are not allowed to comment on this task.'}, status=status.HTTP_403_FORBIDDEN)
-
         comments = Comment.objects.filter(task=task)
         serializer = CommentResponseSerializer(comments, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.data, status=200)
 
 
-# View to delete a comment
 class CommentDeleteView(APIView):
+    """
+    Delete a comment.
+    - Only comment author can delete.
+    """
     permission_classes = [IsAuthenticated, isMember]
 
-    def delete(self, request,task_id,  comment_id, *args, **kwargs):
+    def delete(self, request, task_id, comment_id, *args, **kwargs):
+        """ 
+        DELETE:
+        - deletes comments
         """
-        DELETE a comment if the authenticated user is the author
-        """
-        user = request.user
         comment = get_object_or_404(Comment, id=comment_id, task_id=task_id)
-        commentOwner = comment.author
-
-        if not request.user.is_authenticated:
-            return Response({'detail': 'Authentication credentials were not provided.'}, status=status.HTTP_401_UNAUTHORIZED)
-
-        if user != commentOwner:
-            return Response({'detail': 'You are not allowed to delete this comment.'}, status=status.HTTP_403_FORBIDDEN)
-
+        if request.user != comment.author:
+            return Response({'detail': 'Cannot delete comment.'}, status=403)
         comment.delete()
-        return Response({'detail': 'The comment was successfully deleted.'}, status=status.HTTP_204_NO_CONTENT)
+        return Response({'detail': 'Comment deleted successfully.'}, status=204)

@@ -6,13 +6,19 @@ from users.api.seralizers import RegistrationSerializer, CustomLoginSerializer
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.permissions import AllowAny
 
-# View to register new user
+
 class RegisterrationView(generics.CreateAPIView):
+    """
+    View for registering new users.
+    Accepts user data, validates it, and creates
+    a new user upon success.
+    Returns an auth token and user info afterwards.
+    """
     serializer_class = RegistrationSerializer
 
     def post(self, request, *args, **kwargs):
         """
-        POST a new user
+        POST a new user with token-key, fullname, id and email-adress
         """
         serializer = RegistrationSerializer(data=request.data)
 
@@ -29,8 +35,13 @@ class RegisterrationView(generics.CreateAPIView):
             'user_id': saved_account.id
         })
 
-# View to login existing user 
 class CustomLogin(ObtainAuthToken):
+    """
+    View for authenticating users via email and password.
+    Uses CustomAuthTokenSerializer to validate credentials.
+    On successful login, returns an auth token along with
+    user information (full name, email, user ID and token-key).
+    """
     serializer_class = CustomLoginSerializer
     permission_classes = [AllowAny]
 

@@ -3,10 +3,12 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 
 
-# Serializer for User profile information
 class UserProfileSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(read_only=True)  # Read-only user ID
-    fullname = serializers.SerializerMethodField()  # Computed full name of the user
+    """_
+    Serializer for basic user profile information.
+    """
+    id = serializers.IntegerField(read_only=True)  
+    fullname = serializers.SerializerMethodField()  
 
     def get_fullname(self, obj):
         """
@@ -16,12 +18,15 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'fullname', 'email']  # Fields returned in API
+        fields = ['id', 'fullname', 'email']  
 
 
-# Serializer for user information in comments
+
 class UserCommentSerializer(serializers.ModelSerializer):
-    author = serializers.SerializerMethodField()  # Display author full name
+    """
+    Serializer for showing the author of a comment.
+    """
+    author = serializers.SerializerMethodField()  
 
     def get_author(self, obj):
         """
@@ -31,19 +36,21 @@ class UserCommentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['author']  # Only include author field
+        fields = ['author']  
 
 
-# Serializer for user registration
 class RegistrationSerializer(serializers.ModelSerializer):
-    repeated_password = serializers.CharField(write_only=True)  # Password confirmation field
-    fullname = serializers.CharField()  # Full name input field
-    user_id = serializers.IntegerField(read_only=True)  # Read-only ID
+    """"
+    Serializer for showing the author of a comment.
+    """
+    repeated_password = serializers.CharField(write_only=True)  
+    fullname = serializers.CharField()  
+    user_id = serializers.IntegerField(read_only=True) 
 
     class Meta:
         model = User
         fields = ['fullname', 'email', 'password', 'repeated_password', 'user_id']
-        extra_kwargs = {'password': {'write_only': True}}  # Make password write-only
+        extra_kwargs = {'password': {'write_only': True}} 
 
     def validate_email(self, value):
         """
@@ -70,22 +77,25 @@ class RegistrationSerializer(serializers.ModelSerializer):
         first_name = name_parts[0]
         last_name = name_parts[1] if len(name_parts) > 1 else ""
 
-        # Create user instance
+    
         user = User(
             username=validated_data['email'],
             email=validated_data['email'],
             first_name=first_name,
             last_name=last_name
         )
-        user.set_password(validated_data['password'])  # Hash the password
+        user.set_password(validated_data['password']) 
         user.save()
         return user
 
 
-# Serializer for custom login
+
 class CustomLoginSerializer(serializers.Serializer):
-    email = serializers.EmailField()  # Email field for login
-    password = serializers.CharField(write_only=True)  # Password field
+    """ 
+    Serializer for user login.
+    """
+    email = serializers.EmailField() 
+    password = serializers.CharField(write_only=True)  
 
     def validate(self, data):
         """
@@ -94,16 +104,13 @@ class CustomLoginSerializer(serializers.Serializer):
         email = data.get('email')
         password = data.get('password')
 
-        # Retrieve user by email
         user = User.objects.filter(email=email).first()
         if user is None:
             raise serializers.ValidationError("Invalid credentials")
 
-        # Authenticate user using username (required by Django)
         user = authenticate(username=user.username, password=password)
         if not user:
             raise serializers.ValidationError('Invalid credentials')
-
-        # Add authenticated user to validated data
+        
         data['user'] = user
         return data
