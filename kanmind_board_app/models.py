@@ -3,11 +3,10 @@ from django.contrib.auth.models import User
 
 
 
-# Create your models here.
+# board Model
 class Board(models.Model):
     title = models.CharField(max_length=30)
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='boards_owner')
-    #owner can has many boards but a board can has only one owner
     members = models.ManyToManyField(User, related_name='boards_member', blank=True)
 
 
@@ -15,7 +14,7 @@ class Board(models.Model):
         return self.title
      
      
-    
+# Task Model for the board   
 class Task(models.Model):
     class Status(models.TextChoices):
         to_do = "to_do", "To Do"
@@ -40,7 +39,7 @@ class Task(models.Model):
     def __str__(self):
         return self.title
     
-
+# Comment Model for each Task    
 class Comment(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='comments')
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='authored_comments')
