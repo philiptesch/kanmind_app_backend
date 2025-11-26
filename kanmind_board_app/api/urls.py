@@ -1,4 +1,4 @@
-from django.urls import path, include
+from django.urls import path
 from .views import BoardsView, BoardDetailView, EmailCheckView, TaskCreateView, TaskAssignView, TaskReviewView,TaskDetailView, CommentView, CommentDeleteView
 
 urlpatterns = [

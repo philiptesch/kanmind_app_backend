@@ -4,15 +4,16 @@ from rest_framework.response import Response
 from rest_framework import generics, status
 from users.api.seralizers import RegistrationSerializer, CustomLoginSerializer
 from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from django.contrib.auth.models import User
+from rest_framework.permissions import AllowAny
 
-
-
+# View to register new user
 class RegisterrationView(generics.CreateAPIView):
     serializer_class = RegistrationSerializer
 
     def post(self, request, *args, **kwargs):
+        """
+        POST a new user
+        """
         serializer = RegistrationSerializer(data=request.data)
 
         serializer.is_valid(raise_exception=True)
@@ -27,14 +28,16 @@ class RegisterrationView(generics.CreateAPIView):
             'token': token.key,
             'user_id': saved_account.id
         })
-    
 
-
+# View to login existing user 
 class CustomLogin(ObtainAuthToken):
     serializer_class = CustomLoginSerializer
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
+        """
+        POST to login a existing user 
+        """
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
 
