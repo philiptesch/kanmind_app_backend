@@ -59,15 +59,13 @@ pip install -r requirements.txt
 ```
 
 ### 4️⃣ Apply database migrations
-1 Makemigrations for each app (creates migration files from models):
+1 The migration files are already included in this repository, so you only need to apply them to your local database:
 ```bash
-python manage.py makemigration
-```
-2 Migrate (applies the migrations to the database):
-```bash
+# Apply all migrations
 python manage.py migrate
 ```
-Note: If you add new models in any app, always run makemigrations APP_NAME first, otherwise the tables won’t be created.
+⚠️ Note: Do not run makemigrations unless you modify the models.
+Only run python manage.py makemigrations APP_NAME if you add or change models in the app, otherwise new tables won’t be created correctly.
 
 ### 5️⃣ Create a superuser (admin account)
 
