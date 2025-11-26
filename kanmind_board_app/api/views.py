@@ -280,7 +280,7 @@ class CommentView(APIView):
             {'detail: content is empty', },
         status=400)
 
-        serializer = CommentSerializer(data=data)
+        serializer = CommentSerializer(data=request.data)
 
         if serializer.is_valid():
             comment = serializer.save(author=request.user, task=task)
@@ -304,7 +304,7 @@ class CommentView(APIView):
             {'detail': 'You are not allowed to comment on this task.'},
             status=status.HTTP_403_FORBIDDEN)
         comments = Comment.objects.filter(task=task)
-        serializer = CommentSerializer(comments, many=True)
+        serializer = CommentResponseSerializer(comments, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 
@@ -313,7 +313,7 @@ class CommentDeleteView(APIView):
 
     def delete(self, request,task_id,  comment_id, *args, **kwargs):
         user = request.user
-        comment = get_object_or_404(Comment, comment_id=comment_id, task_id=task_id)
+        comment = get_object_or_404(Comment, id=comment_id, task_id=task_id)
         commentOwner = comment.author
 
         if not request.user.is_authenticated:
